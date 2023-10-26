@@ -61,7 +61,7 @@ var (
 
 func getDefaultFileNameTmpl(config *configs.Config) *template.Template {
 	return template.Must(template.New("filename").Funcs(utils.GetFuncMap(config)).
-		Parse(`{{ .Live.GetPlatformCNName }}/{{ .HostName | filenameFilter }}/[{{ now | date "2006-01-02 15-04-05"}}][{{ .HostName | filenameFilter }}][{{ .RoomName | filenameFilter }}].flv`))
+		Parse(`{{ .Live.GetPlatformCNName }}/{{ .HostName | filenameFilter }}/{{ now | date "2006-01-02"}}/[{{ now | date "2006-01-02 15-04-05"}}][{{ .HostName | filenameFilter }}][{{ .RoomName | filenameFilter }}].flv`))
 }
 
 type Recorder interface {
