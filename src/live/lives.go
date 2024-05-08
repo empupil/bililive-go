@@ -41,8 +41,9 @@ type InitializingFinishedParam struct {
 }
 
 type Options struct {
-	Cookies *cookiejar.Jar
-	Quality int
+	Cookies   *cookiejar.Jar
+	Quality   int
+	AudioOnly bool
 }
 
 func NewOptions(opts ...Option) (*Options, error) {
@@ -90,13 +91,20 @@ func WithQuality(quality int) Option {
 	}
 }
 
+func WithAudioOnly(audioOnly bool) Option {
+	return func(opts *Options) {
+		opts.AudioOnly = audioOnly
+	}
+}
+
 type ID string
 
 type StreamUrlInfo struct {
 	Url         *url.URL
 	Name        string
 	Description string
-	Priority    int
+	Resolution  int
+	Vbitrate    int
 }
 
 type Live interface {
@@ -108,6 +116,7 @@ type Live interface {
 	GetPlatformCNName() string
 	GetLastStartTime() time.Time
 	SetLastStartTime(time.Time)
+	GetHeadersForDownloader() map[string]string
 }
 
 type WrappedLive struct {

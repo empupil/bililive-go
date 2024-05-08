@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"net/url"
 	"os"
@@ -129,16 +130,31 @@ func (p *Parser) ParseLiveStream(ctx context.Context, url *url.URL, live live.Li
 	if err != nil {
 		return err
 	}
+	headers := live.GetHeadersForDownloader()
+	ffUserAgent, exists := headers["User-Agent"]
+	if !exists {
+		ffUserAgent = userAgent
+	}
+	referer, exists := headers["Referer"]
+	if !exists {
+		referer = live.GetRawUrl()
+	}
 	args := []string{
 		"-nostats",
 		"-progress", "-",
 		"-y", "-re",
-		"-user_agent", userAgent,
-		"-referer", live.GetRawUrl(),
+		"-user_agent", ffUserAgent,
+		"-referer", referer,
 		"-rw_timeout", p.timeoutInUs,
 		"-i", url.String(),
 		"-c", "copy",
 		"-bsf:a", "aac_adtstoasc",
+	}
+	for k, v := range headers {
+		if k == "User-Agent" || k == "Referer" {
+			continue
+		}
+		args = append(args, "-headers", k+": "+v)
 	}
 
 	inst := instance.GetInstance(ctx)
@@ -165,14 +181,26 @@ func (p *Parser) ParseLiveStream(ctx context.Context, url *url.URL, live live.Li
 		return err
 	}
 	go p.scheduler()
-	return p.cmd.Wait()
+	err = p.cmd.Wait()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func (p *Parser) Stop() error {
+func (p *Parser) Stop() (err error) {
 	p.closeOnce.Do(func() {
 		if p.cmd.ProcessState == nil {
-			p.cmdStdIn.Write([]byte("q"))
+			if p.cmdStdIn != nil && p.cmd.Process != nil {
+				if _, err = p.cmdStdIn.Write([]byte("q")); err != nil {
+					err = fmt.Errorf("error sending stop command to ffmpeg: %v", err)
+				}
+			} else if p.cmdStdIn == nil {
+				err = fmt.Errorf("p.cmdStdIn == nil")
+			} else if p.cmd.Process == nil {
+				err = fmt.Errorf("p.cmd.Process == nil")
+			}
 		}
 	})
-	return nil
+	return err
 }
